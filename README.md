@@ -1,1 +1,1 @@
-# Semantic_Segmentation_Keras
+# SemanticSegmentation_Keras
