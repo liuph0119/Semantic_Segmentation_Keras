@@ -1,23 +1,36 @@
-"""
-    Script: predicting_utils.py
-    Author: Penghua Liu
-    Date: 2019-01-14
-    Email: liuphhhh@foxmail.com
-    Functions: function for predicting a large hsr image
-
-"""
-from tqdm import tqdm
+import os
+import datetime
 import numpy as np
-import matplotlib.pyplot as plt
+from tqdm import tqdm
 from osgeo import gdal
+from .data_utils.image_io_utils import load_image, get_image_info, save_to_image_gdal, save_to_image
+from .data_utils.label_transform_utils import index_to_color
+from .model_utils import load_custom_model
+from .vis_utils import plot_segmentation
+from core.configures import COLOR_MAP, NAME_MAP
 
-from .image_utils import load_image
-from .loss_utils import compute_positive_iou
-from .gdal_utils import getGeoInfomation, arr_to_tif
-# from .crf_postprocess import do_crf_inference
 
-def predict_buildingfootprint(model, src_path, pred_path, img_size = 256, stride = 32, softmax=1):
-    """ predict building footprint of a large hsr image using a window scanning method
+def predict_per_image(model, image_fname, image_dir, pred_dir, image_width=256, image_height=256, to_prob=False,
+                      colour_mapping=None, model_name="model", dataset_name="voc"):
+    """ predict per image, with no spatial reference
+    """
+    image = load_image(os.path.join(image_dir, image_fname), is_gray=False, value_scale=255.0, target_size=(image_height, image_width), use_gdal=False)
+    pred = model.predict(np.expand_dims(image, axis=0))[0]
+
+    # if save the probability, use gdal to save to geo-tiff files
+    if to_prob:
+        save_to_image_gdal(pred, os.path.join(pred_dir, image_fname.split(".")[0] + "_" + model_name + ".tif"), datatype=gdal.GDT_Float32)
+    else:
+        # save to labels and render with colours
+        label = np.argmax(pred, axis=-1)
+        label_color = index_to_color(label, colour_mapping).astype(np.uint8)
+        plot_segmentation(image, label, COLOR_MAP[dataset_name], NAME_MAP[dataset_name])
+        save_to_image(label_color, os.path.join(pred_dir, image_fname.split(".")[0] + "_" + model_name + "." + image_fname.split(".")[1]))
+
+
+def predict_stride(model, image_fname, image_dir, pred_dir, patch_height=256, patch_width=256, stride = 32,
+                   to_prob=False, colour_mapping=None, geo=False, model_name="model"):
+    """ predict labels of a large image, usually for remote sensing HSR tiles
     :param model: the FCN model instance
     :param src_path: file path of the source hsr image
     :param pred_path: file path to save
@@ -26,59 +39,61 @@ def predict_buildingfootprint(model, src_path, pred_path, img_size = 256, stride
     :return: None
     """
     # load the image
-    image = load_image(src_path, grayscale=False, scale=255.0)
-    geoTransform, proj = getGeoInfomation(src_path)
-    h, w, _ = image.shape
+    image = load_image(os.path.join(image_dir, image_fname), is_gray=False, value_scale=255.0, use_gdal=geo)
+    img_info = get_image_info(os.path.join(image_dir, image_fname), get_geotransform=True, get_projection=True)
+    h, w, c = image.shape
 
     # padding with 0
     padding_h = int(np.ceil(h / stride) * stride)
     padding_w = int(np.ceil(w / stride) * stride)
-    padding_img = np.zeros((padding_h, padding_w, 3))
-    padding_img[:h, :w, :] = image
-    print('>> source image shape: ', padding_img.shape)
+    padding_img = np.zeros((padding_h, padding_w, c))
+    padding_img[:h, :w] = image
+    print('>> padding image size: ', padding_img.shape[0], padding_img.shape[1])
 
-    mask_probas = np.zeros((padding_h, padding_w), dtype=np.float)
+    n_class = len(colour_mapping)
+    mask_probas = np.zeros((padding_h, padding_w, n_class), dtype=np.float)
     mask_counts = np.zeros_like(mask_probas, dtype=np.uint8)
     for i in tqdm(range(padding_h // stride)):
         for j in range(padding_w // stride):
-            image_patch = padding_img[i * stride:i * stride + img_size, j * stride:j * stride + img_size]
-            ch, cw, _ = image_patch.shape
-            if ch != img_size or cw != img_size:
+            _image = padding_img[i*stride:i*stride+patch_height, j*stride:j*stride+patch_width]
+            _h, _w, _c = _image.shape
+            if _h!=patch_height or _w!=patch_width:
                 continue
-            image_patch = np.expand_dims(image_patch, axis=0)
-            pred = model.predict(image_patch, verbose=2)
-            pred = pred.reshape((img_size, img_size))
+            pred = model.predict(np.expand_dims(_image, axis=0), verbose=2)[0]
 
-            mask_probas[i * stride:i * stride + img_size, j * stride:j * stride + img_size] += pred
-            mask_counts[i * stride:i * stride + img_size, j * stride:j * stride + img_size] += 1
+            mask_probas[i*stride:i*stride+patch_height, j*stride:j*stride+patch_width] += pred
+            mask_counts[i*stride:i*stride+patch_height, j*stride:j*stride+patch_width] += 1
 
-    if softmax==1:
-        # save the probability to tif, scaled to 0~255, unsigned char 8 bit
-        arr_to_tif(np.array(mask_probas[:h, :w] / mask_counts[:h, :w]*255, dtype=np.uint8), pred_path, datatype=gdal.GDT_Byte,
-               geoTransform=geoTransform, proj=proj)
+    if to_prob:
+        # use gdal to save the probability to geo-tiff images
+        save_to_image_gdal(mask_probas[:h, :w] / mask_counts[:h, :w], os.path.join(pred_dir, image_fname.split(".")[0] + "_" + model_name + ".tif"),
+                           datatype=gdal.GDT_Float32, geoTransform=img_info["geotransform"], proj=img_info["projection"])
     else:
-        # save the segmented label to tif, 0 for negative class, 255 for positive class
-        arr_to_tif(((mask_probas[:h, :w] / mask_counts[:h, :w])>0.5).astype(np.uint8)*255, pred_path, datatype=gdal.GDT_Byte,
-               geoTransform=geoTransform, proj=proj)
+        # save image labels
+        pred_label = index_to_color(np.argmax(mask_probas[:h, :w], axis=-1), colour_mapping)
+        # if are spatial images, use gdal to save the labels to geo-tiff images
+        if geo:
+            save_to_image_gdal(pred_label,  os.path.join(pred_dir, image_fname.split(".")[0] + "_" + model_name + ".tif"), datatype=gdal.GDT_Byte,
+                        geoTransform=img_info["geotransform"], proj=img_info["projection"])
+        # else, save to common images
+        else:
+            save_to_image(pred_label, os.path.join(pred_dir, image_fname.split(".")[0] + "_" + model_name + "." + image_fname.split(".")[1]))
 
 
+def predict_main(args):
+    model_name = args["model_name"]
+    model_path = args["model_path"]
+    image_fnames = os.listdir(args["image_dir"])
 
-def getOptimalIoUThreshold(img_true, img_pred, thresholds, plot=True):
-    """ get the optimal threshold to get the highest iou
-    :param img_true: ground truth, 0/1
-    :param img_pred: prediction of probability, 0~1
-    :param thresholds: list of thresholds, e.g., [0.1, 0.2, ..., 1.0]
-    :return: the best iou and the best threshold
-    """
-    ious = [compute_positive_iou(img_true, img_pred > threshold) for threshold in thresholds]
-    best_iou = np.argmax(ious)
-    best_threshold = thresholds[np.argmax(ious)]
-    print(
-        "best iou is achieved when threshold is set to {:.6f}, the best iou is {:.6f}".format(best_threshold, best_iou))
-
-    if plot:
-        plt.plot(thresholds, ious)
-        plt.plot(best_threshold, best_iou, "xr")
-        plt.show()
-
-    return (best_iou, best_threshold)
+    # predicting and save to file
+    print("%s: loading network: %s..." % (datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S"), model_path))
+    model = load_custom_model(model_path)
+    if args["mode"]=="stride":
+        for image_fname in image_fnames:
+            print("%s: predicting image: %s" % (datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S"), image_fname))
+            predict_stride(model, image_fname, args["image_dir"], args["preds_dir"], args["image_height"],
+                           args["image_width"], args["stride"], args["to_prob"], COLOR_MAP[args["data_name"]], args["geo"], model_name)
+    else:
+        for image_fname in tqdm(image_fnames):
+            predict_per_image(model, image_fname, args["image_dir"], args["preds_dir"], args["image_height"],
+                              args["image_width"], args["to_prob"], COLOR_MAP[args["data_name"]], model_name, args["data_name"])

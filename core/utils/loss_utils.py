@@ -1,140 +1,104 @@
-"""
-    Script: loss_utils.py
-    Author: Penghua Liu
-    Date: 2019-01-13
-    Email: liuphhhh@foxmail.com
-    Functions: some util functions to define metrics and loss functions.
-
-"""
-
 import tensorflow as tf
-import numpy as np
-import keras.backend as K
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from keras import backend as K
+from tensorflow.python.ops import array_ops
 
-def compute_mean_iou(label, pred):
-    """ compute the mean iou of multiple class
-    :param label: array, any shape
-    :param pred: array, any shape
-    :return: the average iou, relatively higher than the positive_iou
+# https://blog.csdn.net/wangdongwei0/article/details/84576044
+def log_loss(y_true, y_pred):
+    return K.categorical_crossentropy(y_true, y_pred)
+
+
+### TODO: TO BE TESTED
+# binary dice loss
+def _dice_coef_binary(y_true, y_pred, smooth=1):
+    intersection = K.sum(y_true * y_pred, axis=[1,2,3])
+    union = K.sum(y_true, axis=[1,2,3]) + K.sum(y_pred, axis=[1,2,3])
+    return K.mean( (2. * intersection + smooth) / (union + smooth), axis=0)
+
+def dice_coef_loss_binary(y_true, y_pred):
+    return 1 - _dice_coef_binary(y_true, y_pred, smooth=1)
+
+
+
+# y_true and y_pred should be one-hot
+# y_true.shape = (None,Width,Height,Channel)
+# y_pred.shape = (None,Width,Height,Channel)
+def _dice_coef_multiclass(y_true, y_pred, smooth=1):
+    mean_loss = 0
+    for i in range(y_pred.shape(-1)):
+        intersection = K.sum(y_true[:,:,:,i] * y_pred[:,:,:,i], axis=[1,2,3])
+        union = K.sum(y_true[:,:,:,i], axis=[1,2,3]) + K.sum(y_pred[:,:,:,i], axis=[1,2,3])
+        mean_loss += (2. * intersection + smooth) / (union + smooth)
+    return K.mean(mean_loss, axis=0)
+
+def dice_coef_loss_multiclass(y_true, y_pred):
+    return 1 - _dice_coef_multiclass(y_true, y_pred, smooth=1)
+
+
+
+def focal_loss(y_true, y_pred):
+    gamma = 2
+    alpha = 0.25
+    pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
+    pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
+
+    pt_1 = K.clip(pt_1, 1e-3, .999)
+    pt_0 = K.clip(pt_0, 1e-3, .999)
+
+    return -K.sum(alpha * K.pow(1. - pt_1, gamma) * K.log(pt_1)) - K.sum(
+        (1 - alpha) * K.pow(pt_0, gamma) * K.log(1. - pt_0))
+
+
+
+
+def categorical_crossentropy_seg(y_true, y_pred):
     """
-    unique_labels = np.unique(label)
-    num_unique_labels = len(unique_labels)
-
-    I = np.zeros(num_unique_labels)
-    U = np.zeros(num_unique_labels)
-
-    for index, val in enumerate(unique_labels):
-        pred_i = pred == val
-        label_i = label == val
-
-        I[index] = float(np.sum(np.logical_and(label_i, pred_i)))
-        U[index] = float(np.sum(np.logical_or(label_i, pred_i)))
-
-    mean_iou = np.mean(I / U)
-    return mean_iou
-
-
-def compute_positive_iou(label, pred, epsilon=1e-10):
-    """ compute the iou of the positive class, which only concerns the positive objects
-    :param label: array, any shape
-    :param pred: array, any shape
-    :param epsilon: 1e-10
-    :return: the positive_iou
+    :param y_true: tensor of shape (batch_size, height, width, n_class)
+    :param y_pred: tensor of shape (batch_size, height, width, n_class)
+        probability predictions after softmax
+    :return: categorical cross-entropy
     """
-    I = np.logical_and(label, pred)
-    U = np.logical_or(label, pred)
-    return (np.sum(I > 0) + epsilon) / (np.sum(U > 0) + epsilon)
+    n_class = K.int_shape(y_pred)[-1]
+
+    y_true = K.reshape(y_true, (-1, n_class))
+    y_pred = K.log(K.reshape(y_pred, (-1, n_class)))
+
+    cross_entropy = -K.sum(y_true * y_pred, axis=1)
+    cross_entropy_mean = K.mean(cross_entropy)
+
+    return cross_entropy_mean
 
 
-def get_batch_positive_iou(label, pred):
-    """ compute the positive_iou of a batch
-    :param label: 4-d tensor
-    :param pred: 4-d tensor
-    :return: the average positive_iou of a batch
+def sparse_categorical_crossentropy_seg(y_true, y_pred):
+    """ calculate cross-entropy of the one-hot prediction and the sparse gt.
+    :param y_true: tensor of shape (batch_size, height, width)
+    :param y_pred: tensor of shape (batch_size, height, width, n_class)
+    :return: categorical cross-entropy
     """
-    batch_size = label.shape[0]
-    metrics = []
-    for batch in range(batch_size):
-        iou = compute_positive_iou(label[batch]>0, pred[batch]>0)
-        metrics.append(iou)
+    n_class = K.int_shape(y_pred)[-1]
 
-    return np.mean(metrics)
+    y_true = K.one_hot(tf.to_int32(K.flatten(y_true)), n_class)
+    y_pred = K.log(K.reshape(y_pred, (-1, n_class)))
 
+    cross_entropy = -K.sum(y_true * y_pred, axis=1)
+    cross_entropy_mean = K.mean(cross_entropy)
 
-def get_batch_iou_vector(label, pred):
-    """ compute the positive_iou_vector of a batch
-        :param label: 4-d tensor
-        :param pred: 4-d tensor
-        :return: the average iou vector
-        """
-    batch_size = label.shape[0]
-    metrics = []
-    for batch in range(batch_size):
-        iou = compute_positive_iou(label[batch] > 0, pred[batch] > 0)
-        thresholds = np.arange(0.5, 1, 0.05)
-        s = []
-        for threshold in thresholds:
-            s.append(iou > threshold)
-        metrics.append(np.mean(s))
+    return cross_entropy_mean
 
-    return np.mean(metrics)
-
-
-def get_batch_mean_iou(label, pred):
-    """ compute the mean_iou of a batch
-        :param label: 4-d tensor
-        :param pred: 4-d tensor
-        :return: the average mean_iou of a batch
-        """
-    batch_size = label.shape[0]
-    metrics = []
-    for batch in range(batch_size):
-        mean_iou = compute_mean_iou(label[batch]>0, pred[batch]>0)
-        metrics.append(mean_iou)
-
-    return np.mean(metrics)
-
-
-def mIoU_metric(label, pred):
-    return tf.py_func(get_batch_mean_iou, [label > 0.5, pred > 0.5], tf.float64)
-
-
-def positive_iou_metric(label, pred):
-    return tf.py_func(get_batch_positive_iou, [label > 0.5, pred > 0.5], tf.float64)
-
-
-def positive_iou_metric_2(label, pred):
-    return tf.py_func(get_batch_iou_vector, [label, pred > 0], tf.float64)
-
-
-def calAccF1(img_true, img_pred, silence=False):
-    """calculate accuracy, f1-score, precision, and recall
-        :param img_true: ground truth, 2-dim array, value options: {0, 1}
-        :param img_pred: predictions, 2-dim array, value options: {0, 1}
-        :return: accuracy and f1-score
-        """
-    img_true = img_true.reshape(-1).astype(np.int)
-    img_pred = img_pred.reshape(-1).astype(np.int)
-    acc = accuracy_score(img_true, img_pred)
-    f1 = f1_score(img_true, img_pred, average="weighted")
-    p = precision_score(img_true, img_pred, average="weighted")
-    r = recall_score(img_true, img_true, average="weighted")
-    if not silence:
-        print("accuracy: {:.6f}\t\tf1-score: {:.6f}".format(acc, f1))
-    return (acc, f1, p, r)
-
-
-# # # =========================================================================
-### below are lovasz loss functions
 
 def lovasz_grad(gt_sorted):
+    """
+    Computes gradient of the Lovasz extension w.r.t sorted errors
+    See Alg. 1 in paper
+    """
     gts = tf.reduce_sum(gt_sorted)
     intersection = gts - tf.cumsum(gt_sorted)
     union = gts + tf.cumsum(1. - gt_sorted)
     jaccard = 1. - intersection / union
     jaccard = tf.concat((jaccard[0:1], jaccard[1:] - jaccard[:-1]), 0)
     return jaccard
+
+
+# --------------------------- BINARY LOSSES ---------------------------
 
 
 def lovasz_hinge(logits, labels, per_image=True, ignore=None):
@@ -173,8 +137,7 @@ def lovasz_hinge_flat(logits, labels):
         errors_sorted, perm = tf.nn.top_k(errors, k=tf.shape(errors)[0], name="descending_sort")
         gt_sorted = tf.gather(labelsf, perm)
         grad = lovasz_grad(gt_sorted)
-        #loss = tf.tensordot(tf.nn.relu(errors_sorted), tf.stop_gradient(grad), 1, name="loss_non_void")
-        loss = tf.tensordot(tf.nn.elu(errors_sorted), tf.stop_gradient(grad), 1, name="loss_non_void")
+        loss = tf.tensordot(tf.nn.relu(errors_sorted), tf.stop_gradient(grad), 1, name="loss_non_void")
         return loss
 
     # deal with the void prediction case (only void pixels)
@@ -202,9 +165,83 @@ def flatten_binary_scores(scores, labels, ignore=None):
     return vscores, vlabels
 
 
-def lovasz_loss(y_true, y_pred):
-    y_true, y_pred = K.cast(K.squeeze(y_true, -1), 'int32'), K.cast(K.squeeze(y_pred, -1), 'float32')
-    #logits = K.log(y_pred / (1. - y_pred))
-    logits = y_pred #Jiaxin
-    loss = lovasz_hinge(logits, y_true, per_image = True, ignore = None)
+# --------------------------- MULTICLASS LOSSES ---------------------------
+def sparse_lovasz_softmax(labels, probas, classes='all', per_image=False, ignore=0, order='BHWC'):
+    """
+    Multi-class Lovasz-Softmax loss
+      probas: [B, H, W, C] or [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1)
+      labels: [B, H, W] Tensor, ground truth labels (between 0 and C - 1)
+      classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
+      per_image: compute the loss per image instead of per batch
+      ignore: void class labels
+      order: use BHWC or BCHW
+    """
+    if per_image:
+        def treat_image(prob_lab):
+            prob, lab = prob_lab
+            prob, lab = tf.expand_dims(prob, 0), tf.expand_dims(lab, 0)
+            prob, lab = flatten_probas(prob, lab, ignore, order)
+            return lovasz_softmax_flat(prob, lab, classes=classes)
+        losses = tf.map_fn(treat_image, (probas, labels), dtype=tf.float32)
+        loss = tf.reduce_mean(losses)
+    else:
+        loss = lovasz_softmax_flat(*flatten_probas(probas, labels, ignore, order), classes=classes)
     return loss
+
+
+def lovasz_softmax_flat(probas, labels, classes='all'):
+    """
+    Multi-class Lovasz-Softmax loss
+      probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
+      labels: [P] Tensor, ground truth labels (between 0 and C - 1)
+      classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
+    """
+    C = probas.shape[1]
+    losses = []
+    present = []
+    class_to_sum = list(range(C)) if classes in ['all', 'present'] else classes
+    for c in class_to_sum:
+        fg = tf.cast(tf.equal(labels, c), probas.dtype)  # foreground for class c
+        if classes == 'present':
+            present.append(tf.reduce_sum(fg) > 0)
+        errors = tf.abs(fg - probas[:, c])
+        errors_sorted, perm = tf.nn.top_k(errors, k=tf.shape(errors)[0], name="descending_sort_{}".format(c))
+        fg_sorted = tf.gather(fg, perm)
+        grad = lovasz_grad(fg_sorted)
+        losses.append(
+            tf.tensordot(errors_sorted, tf.stop_gradient(grad), 1, name="loss_class_{}".format(c))
+                      )
+    if len(class_to_sum) == 1:  # short-circuit mean when only one class
+        return losses[0]
+    losses_tensor = tf.stack(losses)
+    if classes == 'present':
+        present = tf.stack(present)
+        losses_tensor = tf.boolean_mask(losses_tensor, present)
+    loss = tf.reduce_mean(losses_tensor)
+    return loss
+
+
+def flatten_probas(probas, labels, ignore=None, order='BHWC'):
+    """
+    Flattens predictions in the batch
+    """
+    if order == 'BCHW':
+        probas = tf.transpose(probas, (0, 2, 3, 1), name="BCHW_to_BHWC")
+        order = 'BHWC'
+    if order != 'BHWC':
+        raise NotImplementedError('Order {} unknown'.format(order))
+    C = probas.shape[3]
+    probas = tf.reshape(probas, (-1, C))
+    labels = tf.reshape(labels, (-1,))
+    if ignore is None:
+        return probas, labels
+    valid = tf.not_equal(labels, ignore)
+    vprobas = tf.boolean_mask(probas, valid, name='valid_probas')
+    vlabels = tf.boolean_mask(labels, valid, name='valid_labels')
+    return vprobas, vlabels
+
+
+def lovasz_softmax(y_true, y_pred):
+    y_true = K.expand_dims(K.argmax(y_true, axis=-1), -1)
+    # l_pred = tf.cast(y_pred, y_true.dtype)
+    return sparse_lovasz_softmax(y_true, y_pred)
