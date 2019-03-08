@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 
 from .data_utils.label_transform_utils import index_to_color
 
-plt.rcParams['font.sans-serif'] = ['Cambria Math']
 FONT_SIZE = 12
 
 
-def plot_image_label(rgb_img, label_img, vmin, vmax, names):
+def plot_image_label(rgb_img, label_img, vmin, vmax, names, overlay=True):
     """ plot a rgb image and a label image.
     :param rgb_img: 3-D array or a PIL instance
     :param label_img: 2-D array
     :param vmin: int, minimum value.
     :param vmax: int, maximum value.
     :param names: 1-D array.
+    :param overlay: bool.
 
     :return: None
     """
@@ -27,8 +27,11 @@ def plot_image_label(rgb_img, label_img, vmin, vmax, names):
 
     # plot label image
     plt.subplot(grid_spec[1])
-    plt.imshow(rgb_img)
-    plt.imshow(label_img, vmin=vmin, vmax=vmax, alpha=0.7)
+    if overlay:
+        plt.imshow(rgb_img)
+        plt.imshow(label_img, vmin=vmin, vmax=vmax, alpha=0.7)
+    else:
+        plt.imshow(label_img, vmin=vmin, vmax=vmax)
     plt.axis('off')
     plt.title('label', fontdict={"fontsize": 12})
 

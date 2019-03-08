@@ -85,7 +85,7 @@ def residual_bottleneck(inputs,
                         kernel_initializer="he_normal",
                         bn_epsilon=1e-3,
                         bn_momentum=0.99):
-    """ Building a resnet bottleneck(or a stage) according to the parameters generated from function
+    """ Building a res-net bottleneck(or a stage) according to the parameters generated from function
         'bottleneck_param()'
     :param inputs: 4-D tensor, shape of (batch_size, height, width, depth).
     :param params_list: list, each element of the list is used to build a residual block.
@@ -114,11 +114,12 @@ def bottleneck_param(scope,
                      num_units=3,
                      stride=2,
                      rate=1):
-    """ Generate parameters for each stage in a resnet.
+    """ Generate parameters for each stage in a res-net.
     :param scope: string, the name of the stage(bottleneck), e.g, "block1".
     :param base_depth: int, the base depth of each residual block, default 64.
+    :param kernel_size: int, default 3.
     :param num_units: int, the total number of residual blocks in this stage, default 3.
-    :param stride: int, the stride of the middle convolutional layer in each residual block,
+    :param stride: int, the stride of the middle convolution layer in each residual block,
         default 2
     :param rate: int, default 1.
 
@@ -165,23 +166,23 @@ def resnet_v2_50_separable(input_shape,
     if include_root:
         x = Conv2D(64, (7, 7), strides=(2, 2), padding="same", name="conv1", use_bias=False,
                    activation=None, kernel_initializer=kernel_initializer,
-                   kernel_regularizer=l2(weight_decay))(input_x)
+                   kernel_regularizer=l2(weight_decay))(x)
         x = MaxPooling2D((3, 3), (2, 2), padding="same")(x)
 
     x = residual_bottleneck(x, bottleneck_param(scope="block1", base_depth=64, kernel_size=kernel_size,
-                                               num_units=3, stride=2, rate=1),
+                                                num_units=3, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block2", base_depth=128, kernel_size=kernel_size,
-                                               num_units=4, stride=2, rate=1),
+                                                num_units=4, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block3", base_depth=256, kernel_size=kernel_size,
-                                               num_units=6, stride=1, rate=2),
+                                                num_units=6, stride=1, rate=2),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block4", base_depth=512, kernel_size=kernel_size,
-                                               num_units=3, stride=1, rate=4),
+                                                num_units=3, stride=1, rate=4),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
 
@@ -215,23 +216,23 @@ def resnet_v2_101_separable(input_shape,
     if include_root:
         x = Conv2D(64, (7, 7), strides=(2, 2), padding="same", name="conv1", use_bias=False,
                    activation=None, kernel_initializer=kernel_initializer,
-                   kernel_regularizer=l2(weight_decay))(input_x)
+                   kernel_regularizer=l2(weight_decay))(x)
         x = MaxPooling2D((3, 3), (2, 2), padding="same")(x)
 
     x = residual_bottleneck(x, bottleneck_param(scope="block1", base_depth=64, kernel_size=kernel_size,
-                                               num_units=3, stride=2, rate=1),
+                                                num_units=3, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block2", base_depth=128, kernel_size=kernel_size,
-                                               num_units=4, stride=2, rate=1),
+                                                num_units=4, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block3", base_depth=256, kernel_size=kernel_size,
-                                               num_units=23,stride=1, rate=2),
+                                                num_units=23, stride=1, rate=2),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block4", base_depth=512, kernel_size=kernel_size,
-                                               num_units=3, stride=1, rate=4),
+                                                num_units=3, stride=1, rate=4),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
 
@@ -265,23 +266,23 @@ def resnet_v2_152_separable(input_shape,
     if include_root:
         x = Conv2D(64, (7, 7), strides=(2, 2), padding="same", name="conv1", use_bias=False,
                    activation=None, kernel_initializer=kernel_initializer,
-                   kernel_regularizer=l2(weight_decay))(input_x)
+                   kernel_regularizer=l2(weight_decay))(x)
         x = MaxPooling2D((3, 3), (2, 2), padding="same")(x)
 
     x = residual_bottleneck(x, bottleneck_param(scope="block1", base_depth=64, kernel_size=kernel_size,
-                                               num_units=3, stride=2, rate=1),
+                                                num_units=3, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block2", base_depth=128, kernel_size=kernel_size,
-                                               num_units=8, stride=2, rate=1),
+                                                num_units=8, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block3", base_depth=256, kernel_size=kernel_size,
-                                               num_units=36, stride=1, rate=2),
+                                                num_units=36, stride=1, rate=2),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block4", base_depth=512, kernel_size=kernel_size,
-                                               num_units=3, stride=1, rate=4),
+                                                num_units=3, stride=1, rate=4),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
 
@@ -315,23 +316,23 @@ def resnet_v2_200_separable(input_shape,
     if include_root:
         x = Conv2D(64, (7, 7), strides=(2, 2), padding="same", name="conv1", use_bias=False,
                    activation=None, kernel_initializer=kernel_initializer,
-                   kernel_regularizer=l2(weight_decay))(input_x)
+                   kernel_regularizer=l2(weight_decay))(x)
         x = MaxPooling2D((3, 3), (2, 2), padding="same")(x)
 
     x = residual_bottleneck(x, bottleneck_param(scope="block1", base_depth=64, kernel_size=kernel_size,
-                                               num_units=3, stride=2, rate=1),
+                                                num_units=3, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block2", base_depth=128, kernel_size=kernel_size,
-                                               num_units=24, stride=2, rate=1),
+                                                num_units=24, stride=2, rate=1),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block3", base_depth=256, kernel_size=kernel_size,
-                                               num_units=36, stride=1, rate=2),
+                                                num_units=36, stride=1, rate=2),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = residual_bottleneck(x, bottleneck_param(scope="block4", base_depth=512, kernel_size=kernel_size,
-                                               num_units=3, stride=1, rate=4),
+                                                num_units=3, stride=1, rate=4),
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
 

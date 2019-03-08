@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, precision_recall_fscore_support
 
+
 def compute_accuracy(y_true, y_pred, n_class):
     """ compute accuracy for each class and the "macro"&"micro" average accuracies.
     :param y_true: 1-D array or 2-D array.
@@ -73,9 +74,10 @@ def compute_miou(y_true, y_pred, n_class):
     """
     I = np.zeros(n_class)
     U = np.zeros(n_class)
-    IoUs = np.zeros(n_class)
+    IoUs = [np.nan for i in range(n_class)]
 
-    for i in range(n_class):
+    unique_labels = np.unique(y_true).astype(np.int)
+    for i in unique_labels:
         _y_true = np.where(y_true == i, 1, 0)
         _y_pred = np.where(y_pred == i, 1, 0)
 
@@ -96,13 +98,13 @@ def compute_metrics_per_image(y_true, y_pred, n_class, avg="weighted"):
     :return:
         dict, consists of multi metrics
     """
-    accs, avg_macro_metric, avg_micro_metric = compute_accuracy(y_true, y_pred, n_class=n_class)
+    accs, macro_metric, micro_metric = compute_accuracy(y_true, y_pred, n_class=n_class)
     precisions, recalls, f1s, precision, recall, f1 = compute_precision_recall_f1(y_true, y_pred, n_class=n_class, avg=avg)
     ious, mIoU = compute_miou(y_true, y_pred, n_class=n_class)
-    return {"accuracies_per_class": accs, "macro_avg_acc": avg_macro_metric, "micro_avg_acc": avg_micro_metric,
-            "precisions_per_class": precisions, "avg_precision": precision,
-            "recalls_per_class": recalls, "avg_recall": recall,
-            "f1s_pre_class": f1s, "avg_f1": f1,
+    return {"accuracies_per_class": accs, "macro_accuracy": macro_metric, "micro_accuracy": micro_metric,
+            "precisions_per_class": precisions, "precision": precision,
+            "recalls_per_class": recalls, "recall": recall,
+            "f1s_pre_class": f1s, "f1": f1,
             "ious_per_class": ious, "miou": mIoU}
 
 
@@ -131,7 +133,9 @@ def compute_global_metrics(mat):
 
     # compute precision, recall, f1-score
     precisions = np.diagonal(mat) / np.sum(mat, axis=0)
+    precisions[np.sum(mat, axis=1)==0] = 1e-8
     recalls = np.diagonal(mat) / np.sum(mat, axis=1)
+    recalls[np.sum(mat, axis=1) == 0] = 1e-8
     f1s = 2*precisions*recalls / (precisions + recalls)
     precision = np.sum(np.sum(mat, axis=1) / np.sum(mat) * precisions)
     recall = np.sum(np.sum(mat, axis=1) / np.sum(mat) * recalls)
@@ -140,7 +144,8 @@ def compute_global_metrics(mat):
     I = np.diag(mat)
     U = np.sum(mat, axis=0) + np.sum(mat, axis=1) - I
     ious = I / U
-    miou = np.mean(ious)
+    ious[np.sum(mat, axis=1) == 0] = np.nan
+    miou = np.nanmean(ious)
 
     return {"macro_avg_acc": avg_macro_acc, "micro_avg_acc": avg_micro_acc,
             "precisions": precisions, "precision": precision,

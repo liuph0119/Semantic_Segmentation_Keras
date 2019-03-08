@@ -35,7 +35,7 @@ def image_flip(image, label, left_right_axis=True):
     return image, label
 
 
-def image_randomcrop(image, label, crop_height=128, crop_width=128):
+def image_randomcrop(image, label, crop_height, crop_width):
     """ Random Crop the src and label images
     :param image: numpy array
     :param label: numpy array
@@ -46,11 +46,24 @@ def image_randomcrop(image, label, crop_height=128, crop_width=128):
     assert image.shape[1]>=crop_width and image.shape[0]>=crop_height
     image_width = image.shape[1]
     image_height = image.shape[0]
+
     x = np.random.randint(0, image_width-crop_width+1)
     y = np.random.randint(0, image_height-crop_height+1)
-    return image[y:y+crop_height, x:x+crop_width], label[y:y+crop_height, x:x+crop_width]
+
+    return image[y:y+crop_height, x:x+crop_width], \
+           label[y:y+crop_height, x:x+crop_width]
 
 
+def image_centercrop(image, label, crop_height, crop_width):
+    centerh, centerw = image.shape[0] // 2, image.shape[1] // 2
+    lh, lw = crop_height // 2, crop_width // 2
+    rh, rw = crop_height - lh, crop_width - lw
+
+    h_start, h_end = centerh - lh, centerh + rh
+    w_start, w_end = centerw - lw, centerw + rw
+
+    return image[h_start:h_end, w_start:w_end], \
+           label[h_start:h_end, w_start:w_end]
 # def DataAugmentationColorEnhancement(image, label):
 #     """ Apply color enhancements on the src and label images, including saturation, brightness, contrast, sharpness
 #     :param image: Image instance
@@ -174,6 +187,7 @@ def __test(src_img, label_img, da_func):
 
 
 def my_apply_affine_transform(x, y, rotate_angle, x_shift, y_shift, zoom_x, zoom_y, cval=0, label_cval=0):
+    """ affine transform including rotate, shift and scale. """
     if x.ndim==3:
         cval = (cval, cval, cval)
     if y.ndim == 2:
@@ -191,48 +205,5 @@ def my_apply_affine_transform(x, y, rotate_angle, x_shift, y_shift, zoom_x, zoom
 
     return x, y
 
-
-
-
-def pair_center_crop(x, y, center_crop_size, data_format):
-    if data_format == 'channels_first':
-        centerh, centerw = x.shape[1] // 2, x.shape[2] // 2
-    elif data_format == 'channels_last':
-        centerh, centerw = x.shape[0] // 2, x.shape[1] // 2
-    else:
-        raise ValueError("Invalid data format.")
-    lh, lw = center_crop_size[0] // 2, center_crop_size[1] // 2
-    rh, rw = center_crop_size[0] - lh, center_crop_size[1] - lw
-
-    h_start, h_end = centerh - lh, centerh + rh
-    w_start, w_end = centerw - lw, centerw + rw
-    if data_format == 'channels_first':
-        return x[:, h_start:h_end, w_start:w_end], \
-               y[:, h_start:h_end, w_start:w_end]
-    elif data_format == 'channels_last':
-        return x[h_start:h_end, w_start:w_end], \
-               y[h_start:h_end, w_start:w_end]
-
-
-def pair_random_crop(x, y, random_crop_size, data_format, sync_seed=None):
-    np.random.seed(sync_seed)
-    if data_format == 'channels_first':
-        h, w = x.shape[1], x.shape[2]
-    elif data_format == 'channels_last':
-        h, w = x.shape[0], x.shape[1]
-    else:
-        raise ValueError("Invalid data format.")
-    rangeh = (h - random_crop_size[0]) // 2
-    rangew = (w - random_crop_size[1]) // 2
-    assert rangeh>=0 and rangew>=0
-    offseth = 0 if rangeh==0 else np.random.randint(rangeh)
-    offsetw = 0 if rangew==0 else np.random.randint(rangew)
-
-    h_start, h_end = offseth, offseth + random_crop_size[0]
-    w_start, w_end = offsetw, offsetw + random_crop_size[1]
-    if data_format == 'channels_first':
-        return x[:, h_start:h_end, w_start:w_end], y[:, h_start:h_end, h_start:h_end]
-    elif data_format == 'channels_last':
-        return x[h_start:h_end, w_start:w_end, :], y[h_start:h_end, w_start:w_end]
 
 

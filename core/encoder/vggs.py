@@ -3,7 +3,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D
 from keras.models import Model
 
-from ..utils.net_utils import ConvBNActBlock
+from ..utils.net_utils import conv_bn_act_block
 
 
 def vgg_16(input_shape,
@@ -23,40 +23,40 @@ def vgg_16(input_shape,
     input_x = Input(shape=input_shape)
     x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
 
-    x = ConvBNActBlock(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
     return Model(input_x, x)
@@ -79,44 +79,44 @@ def vgg_19(input_shape,
     input_x = Input(shape=input_shape)
     x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
 
-    x = ConvBNActBlock(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 128, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 256, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
-    x = ConvBNActBlock(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                  bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+    x = conv_bn_act_block(x, 512, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                          bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
     return Model(input_x, x)

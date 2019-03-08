@@ -17,15 +17,15 @@ def parse_training_args():
     """ parse args from .configures.py
     :return: a dict， the training args。
     """
-    trainingArgs = TRAINING_CONFIG
+    training_args = TRAINING_CONFIG
 
     def learning_rate_schedule(epoch):
-        lr_base = trainingArgs["base_lr"]
-        lr_min = trainingArgs["min_lr"]
-        epochs = trainingArgs["epoch"]
-        lr_power = trainingArgs["lr_power"]
-        lr_cycle = trainingArgs["lr_cycle"]
-        mode = trainingArgs['lr_mode']
+        lr_base = training_args["base_lr"]
+        lr_min = training_args["min_lr"]
+        epochs = training_args["epoch"]
+        lr_power = training_args["lr_power"]
+        lr_cycle = training_args["lr_cycle"]
+        mode = training_args['lr_mode']
         if mode is 'power_decay':
             # original lr scheduler
             lr = lr_base * ((1 - float(epoch) / epochs) ** lr_power)
@@ -53,7 +53,6 @@ def parse_training_args():
 
         return lr
 
-
     losses = {
                 "binary_crossentropy": "binary_crossentropy",
                 "categorical_crossentropy": "categorical_crossentropy",
@@ -63,36 +62,39 @@ def parse_training_args():
                     "acc": "acc"
                }
 
-    trainingArgs["loss"] = losses[trainingArgs.get("loss", "categorical_crossentropy")]
-    trainingArgs["metric"] = metrics[trainingArgs.get("metric_name", "acc")]
+    training_args["loss"] = losses[training_args.get("loss", "categorical_crossentropy")]
+    training_args["metric"] = metrics[training_args.get("metric_name", "acc")]
 
-    if trainingArgs["optimizer_name"].lower()=="adam":
-        trainingArgs["optimizer"] = Adam(trainingArgs["base_lr"])
-    elif trainingArgs["optimizer_name"].lower()=="rmsprop":
-        trainingArgs["optimizer"] = RMSprop(trainingArgs["base_lr"])
+    if training_args["optimizer_name"].lower() == "adam":
+        training_args["optimizer"] = Adam(training_args["base_lr"])
+    elif training_args["optimizer_name"].lower() == "rmsprop":
+        training_args["optimizer"] = RMSprop(training_args["base_lr"])
     else:
-        trainingArgs["optimizer"] = SGD(trainingArgs["base_lr"], momentum=0.9)
+        training_args["optimizer"] = SGD(training_args["base_lr"], momentum=0.9)
 
-    trainingArgs["encoder_name"] = trainingArgs.get("encoder_name", "resnet_v2_101")
-    trainingArgs["encoder_weights"] = trainingArgs.get("encoder_weights", None)
+    training_args["encoder_name"] = training_args.get("encoder_name", "resnet_v2_101")
+    training_args["encoder_weights"] = training_args.get("encoder_weights", None)
 
-    if not os.path.exists("{}/models".format(trainingArgs["workspace"])):
-        os.mkdir("{}/models".format(trainingArgs["workspace"]))
-    if not os.path.exists("{}/logs".format(trainingArgs["workspace"])):
-        os.mkdir("{}/logs".format(trainingArgs["workspace"]))
-    if not os.path.exists("{}/figures".format(trainingArgs["workspace"])):
-        os.mkdir("{}/figures".format(trainingArgs["workspace"]))
-    trainingArgs["load_model_name"] = "{}/models/{}.h5".format(trainingArgs["workspace"], trainingArgs["old_model_version"])
-    trainingArgs["save_model_name"] = "{}/models/{}.h5".format(trainingArgs["workspace"], trainingArgs["new_model_version"])
+    if not os.path.exists("{}/models".format(training_args["workspace"])):
+        os.mkdir("{}/models".format(training_args["workspace"]))
+    if not os.path.exists("{}/logs".format(training_args["workspace"])):
+        os.mkdir("{}/logs".format(training_args["workspace"]))
+    if not os.path.exists("{}/figures".format(training_args["workspace"])):
+        os.mkdir("{}/figures".format(training_args["workspace"]))
+    training_args["load_model_name"] = "{}/models/{}.h5".format(
+        training_args["workspace"], training_args["old_model_version"])
+    training_args["save_model_name"] = "{}/models/{}.h5".format(
+        training_args["workspace"], training_args["new_model_version"])
 
-    trainingArgs["callbacks"] = list()
+    training_args["callbacks"] = list()
     # TODO: Modify to save weights only
-    trainingArgs["callbacks"].append(ModelCheckpoint(trainingArgs["save_model_name"], save_best_only=True, verbose=1))
-    trainingArgs["callbacks"].append(LearningRateScheduler(schedule=learning_rate_schedule, verbose=1))
-    trainingArgs["callbacks"].append(TensorBoard(log_dir=os.path.join(trainingArgs["workspace"], 'logs')))
-    if "early_stop" in trainingArgs["callbacks"]:
-        trainingArgs["callbacks"].append(EarlyStopping(patience=trainingArgs["callbacks"]["early_stop"]["patience"], verbose=1))
-    return trainingArgs
+    training_args["callbacks"].append(ModelCheckpoint(training_args["save_model_name"], save_best_only=True, verbose=1))
+    training_args["callbacks"].append(LearningRateScheduler(schedule=learning_rate_schedule, verbose=1))
+    training_args["callbacks"].append(TensorBoard(log_dir=os.path.join(training_args["workspace"], 'logs')))
+    if "early_stop" in training_args["callbacks"]:
+        training_args["callbacks"].append(EarlyStopping(patience=training_args["callbacks"]["early_stop"]["patience"],
+                                                        verbose=1))
+    return training_args
 
 
 def training_main(args):
@@ -111,9 +113,9 @@ def training_main(args):
         val_base_fnames = []
     n_train, n_val = len(train_base_fnames), len(val_base_fnames)
     # if steps are set to 0, all the samples will be used
-    if (args["steps_per_epoch"]==0):
+    if args["steps_per_epoch"] == 0:
         args["steps_per_epoch"] = n_train // args["batch_size"]
-    if (args["steps_per_epoch_val"]==0):
+    if args["steps_per_epoch_val"] == 0:
         args["steps_per_epoch_val"] = n_val // args["batch_size"]
     print(">>>> training configurations:")
     pprint.pprint(args)
@@ -136,12 +138,12 @@ def training_main(args):
                                           weight_decay=WEIGHT_DECAY,
                                           kernel_initializer=KERNEL_INITIALIZER,
                                           bn_epsilon=BN_EPSILON,
-                                          bn_momentum=BN_MOMENTUM)
+                                          bn_momentum=BN_MOMENTUM,
+                                          upscaling_method=UPSCALING_METHOD)
         plot_model(model, args["save_model_name"].replace(".h5", ".png"), show_shapes=True)
 
     model.summary()
     model.compile(loss=args["loss"], optimizer=args["optimizer"], metrics=[args["metric"]])
-
 
     print("+ " * 80)
     print("+    training data size = %d" % n_train)
@@ -151,20 +153,12 @@ def training_main(args):
     print("+    model save path: %s" % args["save_model_name"])
     print("+ " * 80)
 
-    train_datagen = ImageDataGenerator(fill_mode='constant',
-                                       cval=args["cval"],
-                                       label_cval=args["label_cval"],
-                                       rescale=args["featurewise_scale"],
+    train_datagen = ImageDataGenerator(channel_shift_range=AUGMENTATION_CONFIG["channel_shift_range"],
+                                       horizontal_flip=AUGMENTATION_CONFIG["horizontal_flip"]
+                                       )
+    val_datagen = ImageDataGenerator()
 
-                                       channel_shift_range=20.,
-                                       horizontal_flip=True
-                                        )
-    val_datagen = ImageDataGenerator(fill_mode='constant',
-                                     cval=args["cval"],
-                                     label_cval=args["label_cval"],
-                                     rescale=args["featurewise_scale"])
-
-    if n_val==0:
+    if n_val == 0:
         print("%s starting training without validation..." % datetime.datetime.now().strftime("%y-%m-%d %H:%M:%S"))
         model.fit_generator(
             generator=train_datagen.flow_from_directory(
@@ -176,7 +170,8 @@ def training_main(args):
                 label_suffix=args["label_suffix"],
                 n_class=args["n_class"],
                 feed_onehot_label=args["feed_onehot_label"],
-                ignore_label=args["ignore_label"],
+                cval=args["cval"],
+                label_cval=args["label_cval"],
                 crop_mode=args["crop_mode"],
                 target_size=(args["image_height"], args["image_width"]),
                 batch_size=args["batch_size"],
@@ -204,7 +199,8 @@ def training_main(args):
                 label_suffix=args["label_suffix"],
                 n_class=args["n_class"],
                 feed_onehot_label=args["feed_onehot_label"],
-                ignore_label=args["ignore_label"],
+                cval=args["cval"],
+                label_cval=args["label_cval"],
                 crop_mode=args["crop_mode"],
                 target_size=(args["image_height"], args["image_width"]),
                 batch_size=args["batch_size"],
@@ -223,7 +219,8 @@ def training_main(args):
                 label_suffix=args["label_suffix"],
                 n_class=args["n_class"],
                 feed_onehot_label=args["feed_onehot_label"],
-                ignore_label=args["ignore_label"],
+                cval=args["cval"],
+                label_cval=args["label_cval"],
                 crop_mode=args["crop_mode"],
                 target_size=(args["image_height"], args["image_width"]),
                 batch_size=args["batch_size"],

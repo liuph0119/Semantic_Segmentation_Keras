@@ -33,10 +33,10 @@ def UNet(input_shape,
     :return: a Keras Model instance.
     """
     input_x = Input(shape=input_shape)
-    input_x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
+    x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
 
     conv1 = Conv2D(init_filters * 1, (3, 3), activation='relu', padding='same',
-                   kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(input_x)
+                   kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(x)
     conv1 = Dropout(dropout)(conv1)
     conv1 = Conv2D(init_filters * 1, (3, 3), activation='relu', padding='same',
                    kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(conv1)
@@ -112,24 +112,24 @@ def UNet(input_shape,
 
 
 ################################################ ResUNet ################
-def convolution_block(x, filters, size, strides=(1, 1), padding='same', activation=True):
-    x = Conv2D(filters, size, strides=strides, padding=padding)(x)
-    if activation == True:
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-    return x
-
-
-def residual_block(blockInput, num_filters=16, batch_activate=False):
-    x = BatchNormalization()(blockInput)
-    x = Activation("relu")(x)
-    x = convolution_block(x, num_filters, (3, 3))
-    x = convolution_block(x, num_filters, (3, 3), activation=False)
-    x = Add()([x, blockInput])
-    if batch_activate:
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-    return x
+# def convolution_block(x, filters, size, strides=(1, 1), padding='same', activation=True):
+#     x = Conv2D(filters, size, strides=strides, padding=padding)(x)
+#     if activation == True:
+#         x = BatchNormalization()(x)
+#         x = Activation("relu")(x)
+#     return x
+#
+#
+# def residual_block(blockInput, num_filters=16, batch_activate=False):
+#     x = BatchNormalization()(blockInput)
+#     x = Activation("relu")(x)
+#     x = convolution_block(x, num_filters, (3, 3))
+#     x = convolution_block(x, num_filters, (3, 3), activation=False)
+#     x = Add()([x, blockInput])
+#     if batch_activate:
+#         x = BatchNormalization()(x)
+#         x = Activation("relu")(x)
+#     return x
 
 
 def convolutional_residual_block(inputs, n_filters, weight_decay=1e-4, kernel_initializer="he_normal", bn_epsilon=1e-3, bn_momentum=0.99):
@@ -145,6 +145,7 @@ def convolutional_residual_block(inputs, n_filters, weight_decay=1e-4, kernel_in
                kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(x)
     x = Add()([_x, x])
     x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(x)
+    x = Activation("relu")
 
     return x
 
@@ -172,8 +173,9 @@ def ResUNet(input_shape,
     :return: a Keras Model instance.
     """
     input_x = Input(shape=input_shape)
-    input_x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
-    conv1 = convolutional_residual_block(input_x, init_filters*1, weight_decay,
+    x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
+
+    conv1 = convolutional_residual_block(x, init_filters*1, weight_decay,
                                          kernel_initializer, bn_epsilon, bn_momentum)
     pool1 = MaxPooling2D((2, 2))(conv1)
     pool1 = Dropout(dropout / 2)(pool1)
@@ -196,7 +198,6 @@ def ResUNet(input_shape,
     convm = convolutional_residual_block(pool4, init_filters*16, weight_decay,
                                          kernel_initializer, bn_epsilon, bn_momentum)
 
-
     deconv4 = Conv2DTranspose(init_filters * 8, (3, 3), strides=(2, 2), padding="same",
                               kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(convm)
     uconv4 = Concatenate()([deconv4, conv4])
@@ -210,7 +211,6 @@ def ResUNet(input_shape,
     uconv3 = Dropout(dropout)(uconv3)
     uconv3 = convolutional_residual_block(uconv3, init_filters*4, weight_decay,
                                           kernel_initializer, bn_epsilon, bn_momentum)
-
 
     deconv2 = Conv2DTranspose(init_filters * 2, (3, 3), strides=(2, 2), padding="same",
                               kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(uconv3)
@@ -290,7 +290,9 @@ def MobileUNet(input_shape,
                 preset_model))
 
     input_x = Input(shape=input_shape)
-    x = conv_bn_act_block(input_x, 64, weight_decay=weight_decay,
+    x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(input_x)
+
+    x = conv_bn_act_block(x, 64, weight_decay=weight_decay,
                           kernel_initializer=kernel_initializer, bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     x = DepthwiseSeparableConvBlock(x, 64, weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                                     bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)

@@ -28,11 +28,13 @@ def interp_block(inputs,
 
     :return: 4-D tensor, shape of (batch_size, height, width, channel).
     """
-    ksize = (int(round(float(feature_map_shape[0]) / float(level))), int(round(float(feature_map_shape[1]) / float(level))))
+    ksize = (int(round(float(feature_map_shape[0]) / float(level))),
+             int(round(float(feature_map_shape[1]) / float(level))))
     stride_size = ksize
 
     x = MaxPooling2D(pool_size=ksize, strides=stride_size)(inputs)
-    x = Conv2D(512, (1, 1), activation=None, kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(x)
+    x = Conv2D(512, (1, 1), activation=None,
+               kernel_regularizer=l2(weight_decay), kernel_initializer=kernel_initializer)(x)
     x = BatchNormalization(epsilon=bn_epsilon, momentum=bn_momentum)(x)
     x = Activation("relu")(x)
     x = BilinearUpSampling(target_size=feature_map_shape)(x)
@@ -99,8 +101,8 @@ def PSPNet(input_shape,
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
 
-    features = encoder.get_layer(scope_table[encoder_name]["pool3"]).output
-    feature_map_shape = (int(input_shape[0]/8), int(input_shape[1]/8))
+    features = encoder.get_layer(scope_table[encoder_name]["pool4"]).output
+    feature_map_shape = (int(input_shape[0]/16), int(input_shape[1]/16))
 
     features = pyramid_scene_pooling(features, feature_map_shape,
                                      weight_decay=weight_decay, kernel_initializer=kernel_initializer,
@@ -111,7 +113,13 @@ def PSPNet(input_shape,
     features = Activation("relu")(features)
 
     # upsample
-    if upscaling_method=="conv":
+    if upscaling_method == "conv":
+        features = bn_act_convtranspose(features, 512, (3, 3), 2,
+                                        weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                                        bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
+        features = bn_act_conv_block(features, 512, (3, 3),
+                                     weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                                     bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
         features = bn_act_convtranspose(features, 256, (3, 3), 2,
                                         weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                                         bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)

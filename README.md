@@ -1,13 +1,16 @@
 # Semantic Segmentation (Keras) 
 ___
-**Keras implementation of semantic segmentation FCNs**
+Keras implementation of semantic segmentation FCNs
+
 **Update Logs**
 > **2019-02-22**:  implemented several common FCNs and support Geo-tiff Images (especially for remote sensing images).
-> 
+>
+> **2019-03-07**:  tested on VOC2012 dataset (multi-class, rgb inputs) and Inria dataset (binary class, rgb inputs).
+>
 
 **TODO**
 > - [ ] More SOTA FCN architectures.
-> - [ ] Support different output strides.
+> - [ ] Support different output strides in backbones.
 > - [ ] Support different open data sets like VOC, CityScapes, ADE20K, MSCOCO, etc.
 > - [ ] More flexible in data format.
 
@@ -25,7 +28,7 @@ ___
 **FCNs that have been implemented**
 > - [x] [FCN][FCN_paper] (including FCN-8s, FCN-16s, FCN-32s)
 > - [x] [SegNet][SegNet_paper]
-> - [x] U-Net, Res U-Net, Mobile U-Net
+> - [x] [U-Net][UNet_paper], Res U-Net, Mobile U-Net
 > - [x] [PSPNet][PSPNet_paper]
 > - [x] [RefineNet][RefineNet_paper]
 > - [x] [Deeplab v3][Deeplab_v3_paper]
@@ -34,140 +37,131 @@ ___
 
 **FCNs to be implemented**
 > - [ ] ICNet
+> - [ ] etc
+
 
 ---
 ### Folder Structures
-.
-├── core
-│        ├── __init__.py
-│        ├── configures.py
-│        ├── encoder
-│        |        ├── __init__.py
-│        |        ├── resnet_v2.py
-│   　   |        ├── resnet_v2_separable.py
-│        |        ├── vggs.py
-│        |        └── xceptions.py
-│        |
-│        ├── nets
-│        |        ├── __init__.py
-│        |        ├── fcns.py
-│        |        ├── segnets.py
-│        |        ├── unets.py
-│        |        ├── pspnets.py
-│        |        ├── refinenets.py
-│        |        ├── deeplabs.py
-│        |        └── dense_aspp.py
-│        |
-│        └── utils
-│        ├── __init__.py
-│        |
-│        ├── data_utils
-│        |        ├── __init__.py
-│        |        ├── image_io_utils.py
-│        |        ├── label_transform_utils.py
-│        |        ├── image_augmentation_utils.py
-│        |        └── generate_dataset_utils.py
-│        |
-│        ├── loss_utils.py
-│        ├── metric_utils.py
-│        ├── net_utils.py
-│        ├── model_utils.py
-│        ├── training_utils.py
-│        ├── predicting_utils.py
-│        └── visualize_utils.py
+```
+.  
+├── core  
+│   ├── __init__.py 
+|   |
+│   ├── configures.py
+|   | 
+│   ├── encoder   
+│   |   ├── __init__.py  
+│   |   ├── resnet_v2.py  
+│   |   ├── resnet_v2_separable.py  
+│   |   ├── vggs.py  
+│   |   └── xceptions.py  
+│   |  
+│   ├── nets  
+│   |   ├── __init__.py  
+│   |   ├── deeplabs.py  
+│   |   ├── dense_aspp.py  
+│   |   ├── fcns.py  
+│   |   ├── pspnets.py  
+│   |   ├── refinenets.py  
+│   |   ├── segnets.py  
+│   |   └── unets.py  
+│   |  
+│   └── utils  
+│       ├── __init__.py  
+│       |
+│       ├── data_utils  
+│       |   ├── __init__.py  
+│       |   ├── image_io_utils.py  
+│       |   ├── label_transform_utils.py  
+│       |   ├── image_augmentation_utils.py  
+|       |   ├── directory_iterator.py  
+│       |   └── data_generator.py  
+│       |  
+│       ├── loss_utils.py  
+│       ├── metric_utils.py  
+│       ├── model_utils.py  
+│       ├── net_utils.py  
+│       ├── training_utils.py  
+│       ├── predicting_utils.py  
+│       └── vis_utils.py  
+│     
+├── data  
 │   
-├── data
-│   
-├── examples
-│        ├── __init__.py
-│        ├── s1_generate_datasets.py
-│        ├── s2_training.py
-│        └── s3_predicting.py
-│   
-├── LICENSE
+├── examples  
+│   ├── __init__.py  
+│   ├── s1_generate_datasets.py  
+│   ├── s2_training.py 
+|   ├── directory_iterator.py 
+│   └── s3_predicting.py  
+│     
+├── tools
+|   ├── color2index.py
+|   ├── generate_dataset.py
+│   └── helpers.py
 |
-└── README.md
+├── LICENSE  
+|  
+└── README.md  　　
+```
+
 
 ---
 ### Running environment
 The source code was compiled in a Windows 10 platform using Python 3.6.
 The dependencies include:
-> tensorflow-gpu: 1.9, backend
-> Keras: 2.2.4, framework
-> opencv: 4.0, for image I/O
-> PIL: used for image I/O
-> numpy: used for array operations
-> matplotlib: used to visualize images
-> tqdm: used to log iterations
-> GDAL: used for geo-spatial image I/O
-> scikit-learn: used for metric evaluation
+> `tensorflow-gpu`: 1.9, backend  
+> `Keras`: 2.2.4, framework  
+> `opencv`: 4.0, used for image I/O  
+> `PIL`: used for image I/O  
+> `numpy`: used for array operations  
+> `matplotlib`: used to visualize images  
+> `tqdm`: used to log iterations  
+> `GDAL`: used for geo-spatial image I/O  
+> `scikit-learn`: used for metric evaluation  
 
 ---
 ### Usage
 #### 1. Generate data sets
-This section introduces how to generate data sets for model training and validation. 
-#### 2. Training models
+- Since we can randomly crop patch images from the input images, we do not need to prepare training images.
+- However, for large images like HSR remote sensing image tiles, cropping patch images when training is extraordinarily time-consuming. 
+- Thus for such datasets, we can crop them into a certain size and resize the input images to target size for convenience. 
+- More can be found in `./tools/generate_dataset.py`
+#### 2. Convert colorful label to label index
+- More can be found in `./tools/color2index.py`
 
-The structure of the training configuration file (*.json formatted) was illustrated below. We can index a set of training args through a `model name` and a `data set name`.
-.
-├── model name 1
-|   ├── data set name 1
-|   |   └── training args
-|   |
-|   ├── data set name 2
-|   |   └── training args
-|   |
-|   └── data set name n
-|       └── training args
-|
-├── model name 2
-|   ├── ...
-A demo of training configuration file can be found in the following. Here, parameters for a `deeplab_v3p` model on the `ade20k` data set was set.
-> `model_name`: name of the FCN model, { 'FCN-8s', 'FCN-16s', 'FCN-32s', 'SegNet', 'UNet', 'ResUNet', 'MobileUNet', 'PSPNet', 'RefineNet', 'Deeplab_v3', 'Deeplab_v3p', 'DenseASPP'}. 
+The following figure shows converting colors to labels:
+![](./pictures/color2index.png)
 
-```json
-{
-  "deeplab_v3p": {
-    "ade20k": {
-      "model_name": "deeplab_v3p",
-      "old_model_version": "deeplab_v3p_ade20k",
-      "new_model_version": "deeplab_v3p_ade20k",
-      "training_samples_dir": "E:/SegData/ade20k/data_ori/train",
-      "validation_samples_dir": "E:/SegData/ade20k/data_ori/val",
-      "workspace": "E:/SegData/ade20k",
-      "label_is_gray": 1,
-      "ingore_label": 0,
-      "image_width": 256,
-      "image_height": 256,
-      "image_channel": 3,
-      "n_class": 150,
-      "colour_mapping_path": "E:/SemanticSegmentation_Keras/configures/colour_mapping.json",
-      "init_learning_rate": 0.001,
-      "optimizer": "Adam",
-      "verbose": 1,
-      "batch_size": 2,
-      "epoch": 50,
-      "steps_per_epoch": 400,
-      "steps_per_epoch_val": 200,
-      "init_filters": 64,
-      "dropout": 0.4,
-      "loss": "crossentropy",
-      "metric_name": "acc",
-      "encoder_name": "xception_41",
-      "callbacks": {
-        "early_stop": {
-          "patience": 25
-        }
-      }
-    }
-  }
-}
+The following figure shows converting labels to colors:
+![](./pictures/index2color.png)
+#### 3. Training models
+
+dataset are organized as the following folder structure:
 ```
-
-
-
+voc
+  ├── image                         # input image
+  ├── label_color                   # colorful label
+  ├── label_index                   # gray indexed label
+  ├── prediction                    # prediction
+  ├── _temp                         # temp dir
+  ├── models                        # model instance
+  ├── logs                          # training logs
+  ├── train.txt                     # training file names
+  └── val.txt                       # validation file names
+```
 #### 3. Applying Predicting 
 #### 4. Evaluation 
+
+#### 5. Additional 
+##### Dataset
+- WHU Building Dataset [[Data]][WHU_data]  [[Paper]][WHU_paper]
+- Inria Aerial Building Labeling Dataset [[Data]][Inria_data]   [[Paper]][Inria_paper]
+- ISPRS 2D Semantic Labeling Benchmark [[Main]][ISPRS_semantic_labeling]
+- Massachusetts Roads and Buildings Dataset [[Data]][Mass_data]
+- VOC2012 [[Main]][VOC_main]   [[Data]][VOC]
+- VOC2012 Augmentation [[Data]][VOC_aug]
+- CityScapes Dataset [[Data]][CityScapes]
+- ADE20K Dataset [[Data]][ADE20K]
 
 ---
 ### Contact
@@ -181,5 +175,17 @@ Penghua Liu (liuph3@mail2.sysu.edu.cn), Sun Yat-sen University
 [DenseASPP_paper]: http://openaccess.thecvf.com/content_cvpr_2018/html/Yang_DenseASPP_for_Semantic_CVPR_2018_paper.html
 [RefineNet_paper]: https://arxiv.org/abs/1611.06612
 [PSPNet_paper]: https://arxiv.org/abs/1612.01105
+[UNet_paper]: https://arxiv.org/abs/1505.04597
 
+[WHU_data]: http://study.rsgis.whu.edu.cn/pages/download/
+[WHU_paper]: https://ieeexplore.ieee.org/abstract/document/8444434
+[Inria_data]: https://project.inria.fr/aerialimagelabeling/
+[Inria_paper]: https://hal.inria.fr/hal-01468452/document
+[ISPRS_semantic_labeling]: http://www2.isprs.org/commissions/comm3/wg4/2d-sem-label-potsdam.html
+[Mass_data]: https://www.cs.toronto.edu/~vmnih/data/
 
+[VOC_main]: http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html
+[VOC]: http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
+[VOC_aug]: http://www.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/semantic_contours/benchmark.tgz
+[CityScapes]: https://www.cityscapes-dataset.com/
+[ADE20K]: http://data.csail.mit.edu/places/ADEchallenge/ADEChallengeData2016.zip

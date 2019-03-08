@@ -5,6 +5,7 @@ from .dense_aspp import DenseASPP
 from .fcns import FCN_8s, FCN_16s, FCN_32s
 from .refinenets import RefineNet
 from .segnets import SegNet
+from .srinets import sri_net
 
 
 def SemanticSegmentationModel(model_name,
@@ -36,66 +37,71 @@ def SemanticSegmentationModel(model_name,
     :return: a Keras Model instance.
     """
     model_name = model_name.lower()
-    if model_name=="unet":
+    if model_name == "unet":
         model = UNet(input_shape=input_shape, n_class=n_class,
                      weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                        bn_momentum=bn_momentum, bn_epsilon=bn_epsilon,
                      init_filters=init_filters, dropout=dropout)
-    elif model_name=="resunet":
+    elif model_name == "resunet":
         model = ResUNet(input_shape=input_shape, n_class=n_class,
                         weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                        bn_momentum=bn_momentum, bn_epsilon=bn_epsilon,
                         init_filters=init_filters, dropout=dropout)
-    elif model_name=="mobile_unet":
+    elif model_name == "mobile_unet":
         model = MobileUNet(input_shape=input_shape, n_class=n_class,
                            weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                        bn_momentum=bn_momentum, bn_epsilon=bn_epsilon, preset_model="MobileUNet-Skip")
-    elif model_name=="pspnet":
+    elif model_name == "pspnet":
         model = PSPNet(input_shape=input_shape, n_class=n_class,
                        encoder_name=encoder_name, encoder_weights=encoder_weights,
                        weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                        bn_momentum=bn_momentum, bn_epsilon=bn_epsilon, upscaling_method=upscaling_method)
-    elif model_name=="refinenet":
+    elif model_name == "refinenet":
         model = RefineNet(input_shape=input_shape, n_class=n_class,
                           encoder_name=encoder_name, encoder_weights=encoder_weights,
                           weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                           bn_momentum=bn_momentum, bn_epsilon=bn_epsilon,
                           init_filters=init_filters, upscaling_method=upscaling_method)
-    elif model_name=="deeplab_v3":
+    elif model_name == "deeplab_v3":
         model = Deeplab_v3(input_shape=input_shape, n_class=n_class,
                            encoder_name=encoder_name, encoder_weights=encoder_weights,
                            weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                            bn_momentum=bn_momentum, bn_epsilon=bn_epsilon)
-    elif model_name=="deeplab_v3p":
+    elif model_name == "deeplab_v3p":
         model = Deeplab_v3p(input_shape=input_shape, n_class=n_class,
                             encoder_name=encoder_name, encoder_weights=encoder_weights,
                             weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                             bn_momentum=bn_momentum, bn_epsilon=bn_epsilon)
-    elif model_name=="dense_aspp":
+    elif model_name == "dense_aspp":
         model = DenseASPP(input_shape=input_shape, n_class=n_class,
                           encoder_name=encoder_name, encoder_weights=encoder_weights,
                           weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                           bn_momentum=bn_momentum, bn_epsilon=bn_epsilon)
-    elif model_name=="fcn_8s":
+    elif model_name == "fcn_8s":
         model = FCN_8s(input_shape=input_shape, n_class=n_class,
                        encoder_name=encoder_name, encoder_weights=encoder_weights,
                        weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                        bn_momentum=bn_momentum, bn_epsilon=bn_epsilon, dropout=dropout)
-    elif model_name=="fcn_16s":
+    elif model_name == "fcn_16s":
         model = FCN_16s(input_shape=input_shape, n_class=n_class,
                         encoder_name=encoder_name, encoder_weights=encoder_weights,
                         weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                         bn_momentum=bn_momentum, bn_epsilon=bn_epsilon, dropout=dropout)
-    elif model_name=="fcn_32s":
+    elif model_name == "fcn_32s":
         model = FCN_32s(input_shape=input_shape, n_class=n_class,
                         encoder_name=encoder_name, encoder_weights=encoder_weights,
                         weight_decay=weight_decay, kernel_initializer=kernel_initializer,
                         bn_momentum=bn_momentum, bn_epsilon=bn_epsilon, dropout=dropout)
-    elif model_name=="segnet":
+    elif model_name == "segnet":
         model = SegNet(input_shape=input_shape, n_class=n_class,
                        encoder_name=encoder_name, encoder_weights=encoder_weights,
                        weight_decay=weight_decay, kernel_initializer=kernel_initializer,
-                       bn_momentum=bn_momentum, bn_epsilon=bn_epsilon,)
+                       bn_momentum=bn_momentum, bn_epsilon=bn_epsilon)
+    elif model_name == "srinet":
+        model = sri_net(input_shape=input_shape, n_class=n_class,
+                        encoder_name=encoder_name, encoder_weights=encoder_weights,
+                        weight_decay=weight_decay, kernel_initializer=kernel_initializer,
+                        bn_epsilon=bn_epsilon, bn_momentum=bn_momentum)
     else:
         raise ValueError("Invalid model_name: {}. Expected to be one of ['fcn_8s', 'fcn_16s', 'fcn_32s', 'segnet', "
                          "'unet', 'resunet', 'mobile_unet', 'pspnet', 'refinenet', 'deeplab_v3, 'deeplab_v3p', "

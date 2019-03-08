@@ -1,54 +1,72 @@
 import os
-import json
-from tqdm import tqdm
-import matplotlib.pyplot as plt
+import pprint
 import numpy as np
+from tqdm import tqdm
+from sklearn.metrics import confusion_matrix
 
+from core.configures import NAME_MAP, EVALUATING_CONFIG
 from core.utils.data_utils.image_io_utils import load_image
-from core.utils.data_utils.label_transform_utils import labelarray_to_onehot, onehot_to_labelarray
-from core.utils.vis_utils import plot_label_img
-from core.utils.metric_utils import evaluate_segmentation
+from core.utils.metric_utils import compute_global_metrics, compute_metrics_per_image
+
 
 def evaluating_main(args):
-    with open(args["colour_mapping_path"], "r") as f:
-        colour_mapping = json.load(f)[args["data_name"]]
     preds_fnames = os.listdir(args["preds_dir"])
     label_fnames = os.listdir(args["label_dir"])
+    n_class = len(NAME_MAP[args["dataset_name"]])
 
-    mIous, accs, precisions, recalls, f1s, ious_per_class = [], [], [], [], [], []
-    for preds_fname, label_fname in tqdm(zip(preds_fnames, label_fnames)):
-        label = load_image(os.path.join(args["label_dir"], label_fname), is_gray=args["label_is_gray"])
-        label = onehot_to_labelarray(labelarray_to_onehot(label, colour_mapping))
+    if args["mode"] == "global":
+        mat = np.zeros((n_class, n_class))
+        for preds_fname, label_fname in tqdm(zip(preds_fnames, label_fnames)):
+            preds = load_image(os.path.join(args["preds_dir"], preds_fname), is_gray=True)
+            h, w, _ = preds.shape
+            label = load_image(os.path.join(args["label_dir"], label_fname), is_gray=True, target_size=(h, w))
+            _mat = confusion_matrix(label.reshape(-1), preds.reshape(-1), labels=np.arange(n_class))
+            mat = mat + _mat
+        if args["ignore_0"]:
+            mat = mat[1:, 1:]
+        avg_metric = compute_global_metrics(mat)
 
-        preds = load_image(os.path.join(args["preds_dir"], preds_fname), is_gray=args["label_is_gray"])
-        preds = onehot_to_labelarray(labelarray_to_onehot(preds, colour_mapping))
+    elif args["mode"] == "per_image":
+        avg_metric = {"accuracies_per_class": np.zeros(n_class), "macro_accuracy": 0., "micro_accuracy": 0.,
+         "precisions_per_class": np.zeros(n_class), "precision": 0.,
+         "recalls_per_class": np.zeros(n_class), "recall": 0.,
+         "f1s_pre_class": np.zeros(n_class), "f1": 0.,
+         "ious_per_class": np.zeros(n_class), "miou": 0.}
+        count = {"accuracies_per_class": np.zeros(n_class), "macro_accuracy": 0, "micro_accuracy": 0,
+                 "precisions_per_class": np.zeros(n_class), "precision": 0,
+                 "recalls_per_class": np.zeros(n_class), "recall": 0,
+                 "f1s_pre_class": np.zeros(n_class), "f1": 0,
+                 "ious_per_class": np.zeros(n_class), "miou": 0}
+        for preds_fname, label_fname in zip(preds_fnames, label_fnames):
+            preds = load_image(os.path.join(args["preds_dir"], preds_fname), is_gray=True)
+            h, w, _ = preds.shape
+            label = load_image(os.path.join(args["label_dir"], label_fname), is_gray=True, target_size=(h, w))
 
-        if args["plot"]:
-            fig, (ax1, ax2) = plt.subplots(1, 2)
-            plot_label_img(label, ax=ax1)
-            plot_label_img(preds, ax=ax2)
-            plt.show()
+            metric = compute_metrics_per_image(label, preds, n_class)
+            for key in metric:
+                if not np.isscalar(metric[key]):
+                    for i in range(len(metric[key])):
+                        if not np.isnan(metric[key][i]):
+                            avg_metric[key][i] = avg_metric[key][i] + metric[key][i]
+                            count[key][i] += 1
+                else:
+                    avg_metric[key] = avg_metric[key] + metric[key]
+                    count[key] += 1
 
-        acc, pre, rec, f1, miou, iou_per_class = evaluate_segmentation(label, preds, total_class=2)
-        print("metrics of {}: acc={:.6f}  f1={:.6f}, mIoU={:.6f}, IoU_Per_Class={}".format(preds_fname, acc, f1, miou, ";".join(iou_per_class.astype(np.str))))
-        mIous.append(miou)
-        accs.append(acc)
-        f1s.append(f1)
-        precisions.append(pre)
-        recalls.append(rec)
-        ious_per_class.append(iou_per_class)
+        for key in avg_metric:
+            if not np.isscalar(avg_metric[key]):
+                for i in range(len(avg_metric[key])):
+                    if not np.isnan(avg_metric[key][i]):
+                        avg_metric[key][i] = avg_metric[key][i] / count[key][i]
+            else:
+                avg_metric[key] = avg_metric[key] / count[key]
+    else:
+        raise ValueError("Invalid 'mode': %s. Expected to be 'global' or 'per_image'!" % args["mode"])
 
-    print("avg_accuracy={}".format(np.mean(accs)))
-    print("avg_f1={}".format(np.mean(f1s)))
-    print("avg_mIoU={}".format(np.mean(mIous)))
-    print("avg_IoU_per_class={}".format(np.mean(ious_per_class, axis=0)))
-    print("avg_IoU_per_class={}".format(np.mean(ious_per_class)))
+    pprint.pprint(avg_metric)
+    return avg_metric
+
 
 
 if __name__ == "__main__":
-    configure_file = "E:/SemanticSegmentation_Keras/configures/evaluating_configures.json"
-    task_id = "task_1"
-    with open(configure_file, "r") as f:
-        args = json.load(f)[task_id]
-
-    evaluating_main(args)
+    evaluating_main(EVALUATING_CONFIG)
