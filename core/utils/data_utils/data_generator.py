@@ -55,9 +55,7 @@ class ImageDataGenerator(object):
                             batch_size=1,
                             shuffle=True,
                             seed=None,
-                            save_to_dir=False,
-                            save_image_path="",
-                            save_label_path="",
+                            debug=False,
                             dataset_name="voc"):
         return SegDirectoryIterator(base_fnames,
                                     self,
@@ -75,9 +73,7 @@ class ImageDataGenerator(object):
                                     batch_size=batch_size,
                                     shuffle=shuffle,
                                     seed=seed,
-                                    save_to_dir=save_to_dir,
-                                    save_image_path=save_image_path,
-                                    save_label_path=save_label_path,
+                                    debug=debug,
                                     dataset_name = dataset_name)
 
 

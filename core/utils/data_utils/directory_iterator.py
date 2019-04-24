@@ -29,9 +29,7 @@ class SegDirectoryIterator(Iterator):
                  batch_size=1,
                  shuffle=True,
                  seed=None,
-                 save_to_dir=False,
-                 save_image_path="",
-                 save_label_path="",
+                 debug=False,
                  dataset_name="voc"
                  ):
         """
@@ -83,9 +81,7 @@ class SegDirectoryIterator(Iterator):
                 "Invalid crop mode: {}. Expected 'random', 'center', 'resize', 'none'.".format(self.crop_mode))
         self.target_size = target_size
         self.batch_size = batch_size
-        self.save_to_dir = save_to_dir
-        self.save_image_path = save_image_path
-        self.save_label_path = save_label_path
+        self.debug = debug
         self.shuffle = shuffle
         self.seed = seed
         self.dataset_name = dataset_name
@@ -165,11 +161,11 @@ class SegDirectoryIterator(Iterator):
             _label = np.clip(_label, 0, self.n_class - 1).astype(np.uint8)
 
             ### 5.2. save the generated images to local dir
-            if self.save_to_dir:
-                time_flag = "_{}".format(datetime.datetime.now().strftime("%y%m%d%H%M%S"))
+            if self.debug:
+                #time_flag = "_{}".format(datetime.datetime.now().strftime("%y%m%d%H%M%S"))
                 plot_image_label(_image/255, _label, vmin=0, vmax=self.n_class - 1, names=NAME_MAP[self.dataset_name])
-                save_to_image(_image, os.path.join(self.save_image_path, self.base_fnames[ind] + time_flag + self.image_suffix))
-                save_to_image(_label, os.path.join(self.save_label_path, self.base_fnames[ind] + time_flag + self.label_suffix))
+                #save_to_image(_image, os.path.join(self.save_image_path, self.base_fnames[ind] + time_flag + self.image_suffix))
+                #save_to_image(_label, os.path.join(self.save_label_path, self.base_fnames[ind] + time_flag + self.label_suffix))
 
             if self.feed_onehot_label:
                 _label = to_categorical(_label, self.n_class, dtype="uint8")

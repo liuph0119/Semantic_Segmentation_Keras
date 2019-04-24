@@ -42,3 +42,18 @@ def resize_and_copy_image(fname, dst_dir, target_size=(1024, 512)):
     img.save(os.path.join(dst_dir, os.path.basename(fname)))
     img.close()
 
+
+def create_train_val_txt(image_dir, val_rate=0.25):
+    fnames = os.listdir(image_dir)
+    base_dir = os.path.dirname(image_dir)
+    with open(base_dir+'/train.txt', 'w', encoding='utf-8') as f_train:
+        with open(base_dir+'/val.txt', 'w', encoding='utf-8') as f_val:
+            for fname in fnames:
+                if np.random.random() < val_rate:
+                    f_val.write('%s\n' % fname.split('.')[0])
+                else:
+                    f_train.write('%s\n' % fname.split('.')[0])
+
+
+
+# create_train_val_txt("F:\ChinaBuilding\BingAerialBuilding\\USA\\train_val\\image", 0.25)

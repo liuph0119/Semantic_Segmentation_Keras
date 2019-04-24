@@ -4,13 +4,16 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
-from core.configures import COLOR_MAP, NAME_MAP
+import sys
+sys.path.append('.')
+
+from core.configures import COLOR_MAP, NAME_MAP, color2index_config
 from core.utils.vis_utils import plot_image_label
 from core.utils.data_utils.image_io_utils import load_image, save_to_image
 from core.utils.data_utils.label_transform_utils import color_to_index, index_to_color
 
 
-def convert_color_to_index(src_path, color_mapping, src_color_mode="rgb", dst_path=None, plot=False, names=None):
+def convert_color_to_index(src_path, color_mapping, src_color_mode='rgb', dst_path=None, plot=False, names=None):
     """ convert a colorful label image to a gray (1-channel) image
         (positive index from 1~n, 0 represents background.
         If there is no background classes, there will still be 0 values)
@@ -29,24 +32,24 @@ def convert_color_to_index(src_path, color_mapping, src_color_mode="rgb", dst_pa
     :return: None
     """
     if color_mapping is None:
-        raise ValueError("Invalid color mapping: None. Expected not None!")
-    if src_color_mode=="rgb":
+        raise ValueError('Invalid color mapping: None. Expected not None!')
+    if src_color_mode=='rgb':
         label_color = load_image(src_path, is_gray=False).astype(np.uint8)
-    elif src_color_mode=="gray":
+    elif src_color_mode=='gray':
         label_color = load_image(src_path, is_gray=True).astype(np.uint8)
     else:
-        raise ValueError("Invalid src_color_mode: {}. Expected 'rgb' or 'gray'!".format(src_color_mode))
+        raise ValueError('Invalid src_color_mode: {}. Expected "rgb" or "gray"!'.format(src_color_mode))
 
     label_index = color_to_index(label_color, color_mapping, to_sparse=True)
     if np.max(label_index)>=len(color_mapping):
-        raise ValueError("max value is large than: {}：{}".format(len(color_mapping)+1, np.max(label_index)))
+        raise ValueError('max value is large than: {}：{}'.format(len(color_mapping)+1, np.max(label_index)))
 
     if dst_path:
         save_to_image(label_index, dst_path)
 
     if plot:
         if names is None:
-            names = ["class_{}".format(i) for i in range(len(color_mapping))]
+            names = ['class_{}'.format(i) for i in range(len(color_mapping))]
         if label_color.shape[-1]==1:
             label_color = label_color[:, :, 0]
         plot_image_label(label_color, label_index, 0, len(color_mapping)-1, names, overlay=False)
@@ -62,7 +65,7 @@ def convert_index_to_color(src_path, color_mapping, dst_path=None, plot=False, n
     :return: None
     """
     if color_mapping is None:
-        raise ValueError("Invalid color mapping: None. Expected not None!")
+        raise ValueError('Invalid color mapping: None. Expected not None!')
     label_index = load_image(src_path, is_gray=True).astype(np.uint8)[:, :, 0]
     label_color = index_to_color(label_array=label_index, color_mapping=color_mapping).astype(np.uint8)
 
@@ -74,18 +77,18 @@ def convert_index_to_color(src_path, color_mapping, dst_path=None, plot=False, n
         plt.subplot(grid_spec[0])
         plt.imshow(label_index, vmin=0, vmax=len(color_mapping)-1)
         plt.axis('off')
-        plt.title("label index")
+        plt.title('label index')
 
         plt.subplot(grid_spec[1])
         if label_color.ndim == 3:
             label_color = label_color / 255
         plt.imshow(label_color)
         plt.axis('off')
-        plt.title("colorful label")
+        plt.title('colorful label')
 
         ax = plt.subplot(grid_spec[2])
         if names is None:
-            names = ["class_{}".format(i) for i in range(len(color_mapping))]
+            names = ['class_{}'.format(i) for i in range(len(color_mapping))]
         FULL_LABEL_MAP = np.arange(len(names)).reshape(len(names), 1)
         FULL_COLOR_MAP = index_to_color(FULL_LABEL_MAP, color_mapping)
         unique_labels = np.unique(label_index)
@@ -101,37 +104,19 @@ def convert_index_to_color(src_path, color_mapping, dst_path=None, plot=False, n
 
 
 if __name__ == "__main__":
-    # convert colorful label to label index
-    color_mapping = COLOR_MAP["voc"]                    # color map
-    name_mapping = NAME_MAP["voc"]                      # name map
-    src_color_mode = "rgb"                              # color mode of the source image, "rgb" or "gray
-    src_dir = "../data/voc/label_color"                 # directory of the source labels
-    dst_dir = "../data/voc/label_index"                 # directory of the destination labels
-    _temp_dir = "../data/voc/_temp"
-    suffix = ".png"                                     # label image suffix
+    color_mapping = COLOR_MAP[color2index_config.dataset_name]
+    name_mapping = NAME_MAP[color2index_config.dataset_name]
+    src_color_mode = color2index_config.color_mode
+    src_dir = color2index_config.src_dir
+    dst_dir = color2index_config.dst_dir
 
     fnames = os.listdir(src_dir)
     for fname in tqdm(fnames):
-        convert_color_to_index(src_path=os.path.join(src_dir, line.strip()+suffix), color_mapping=color_mapping,
-                               src_color_mode=src_color_mode, dst_path=os.path.join(dst_dir, line.strip()+suffix),
-                               plot=True, names=name_mapping)
-        # convert_index_to_color(src_path=os.path.join(dst_dir, line.strip()+suffix), color_mapping=color_mapping,
-        #                        dst_path=os.path.join(_temp_dir, line.strip()+suffix), plot=True, names=name_mapping)
-
-
-    # convert gray label image
-    color_mapping = COLOR_MAP["whu"]          # color map
-    name_mapping = NAME_MAP["whu"]            # name map
-    src_color_mode = "gray"                     # color mode of the source image, "rgb" or "gray
-    src_dir = "F:/whu/test/label"       # directory of the source labels
-    dst_dir = "F:/whu/test/label_index"       # directory of the destination labels
-    _temp_dir = "F:/whu"
-    suffix = ".tif"                             # label image suffix
-    fnames = os.listdir(src_dir)
-    for fname in tqdm(fnames):
-        convert_color_to_index(src_path=os.path.join(src_dir, fname), color_mapping=color_mapping,
-                               src_color_mode=src_color_mode, dst_path=os.path.join(dst_dir, fname),
-                               plot=False, names=name_mapping)
-            # convert_index_to_color(src_path=os.path.join(dst_dir, line.strip() + suffix), color_mapping=color_mapping,
-            #                        dst_path=os.path.join(_temp_dir, line.strip() + suffix), plot=True,
-            #                        names=name_mapping)
+        if color2index_config.mode == 'color2index':
+            convert_color_to_index(src_path=os.path.join(src_dir, fname.strip()), color_mapping=color_mapping,
+                                   src_color_mode=src_color_mode, dst_path=os.path.join(dst_dir, fname.strip()),
+                                   plot=color2index_config.show_comparison, names=name_mapping)
+        elif color2index_config.mode == 'index2color':
+            convert_index_to_color(src_path=os.path.join(src_dir, fname.strip()), color_mapping=color_mapping,
+                                   dst_path=os.path.join(dst_dir, fname.strip()),
+                                   plot=color2index_config.show_comparison, names=name_mapping)
